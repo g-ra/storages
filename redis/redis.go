@@ -328,6 +328,7 @@ func (provider *Redis) Delete(key string) {
 	_ = provider.inClient.Do(provider.ctx, provider.inClient.B().Del().Key(key).Build())
 }
 
+// Добавьте этот скрипт на уровне пакета
 var deleteByPatternScript = redis.NewLuaScript(`
   local cursor = "0"
   local count = 0
@@ -336,18 +337,22 @@ var deleteByPatternScript = redis.NewLuaScript(`
     cursor = result[1]
     local keys = result[2]
     if #keys > 0 then
-      redis.call("DEL", unpack(keys))
+      -- Используем UNLINK вместо DEL для асинхронного удаления
+      redis.call("UNLINK", unpack(keys))
       count = count + #keys
     end
   until cursor == "0"
   return count
 `)
 
+// ...
+
+// Замените существующую функцию DeleteMany на эту
 func (provider *Redis) DeleteMany(key string) {
 	// Выполняем скрипт, передавая паттерн как аргумент.
-	// Это будет одна сетевая операция со стороны клиента.
+	// Это одна сетевая операция со стороны клиента.
 	err := deleteByPatternScript.Exec(provider.ctx, provider.inClient, nil, []string{key}).Error()
-	if err != nil {
+	if err != nil && !errors.Is(err, redis.Nil) {
 		provider.logger.Errorf("Failed to delete keys by pattern with Lua script: %v", err)
 	}
 }
