@@ -352,7 +352,7 @@ func (provider *Redis) DeleteMany(key string) {
 	// Выполняем скрипт, передавая паттерн как аргумент.
 	// Это одна сетевая операция со стороны клиента.
 	err := deleteByPatternScript.Exec(provider.ctx, provider.inClient, nil, []string{key}).Error()
-	if err != nil && !errors.Is(err, redis.Nil) {
+	if err != nil {
 		provider.logger.Errorf("Failed to delete keys by pattern with Lua script: %v", err)
 	}
 }
